@@ -1,0 +1,195 @@
+
+/* test brio and wu solution against results of Ryu
+   and Jones, Table 5A */
+
+#include "decs.h"
+
+void init()
+{
+	int i,j ;
+	void set_arrays() ;
+	void bounds() ;
+	double X,Y,R,rho0,amp ;
+	double frho(double R), fp(double R) ;
+	int smooth ;
+
+	/* assume throughout that G = rho = L = 1 */
+	gam = 5./3. ;
+	dt = 0.001 ;
+	Lx = 2. ;
+	Ly = 1. ;
+
+	/* set up arrays,details */
+	dx = Lx/NX ;
+	dy = Ly/NY ;
+	dV = dx*dy ;
+	t = 0. ;
+	set_arrays() ;
+
+	/* more hardwired choices */
+	tf = 0.1 ;
+	DTd = tf/10. ;	/* dumping frequency */
+	DTl = 0.001 ;	/* logfile frequency */
+	DTi = 0.05 ;	/* image frequency */
+
+	amp = 1.e-4 ;
+	rho0 = 1. ;
+
+#if 1
+	cour = 0.8 ;
+
+	LOOP {
+		X = (i + 0.5)*dx - 0.5*Lx ;
+		Y = (j + 0.5)*dy - 0.5*Ly ;
+
+
+	   	if(X < 0.) {
+                        p[i][j][UX] = 0. ;
+                        p[i][j][UY] = 0. ;
+                        p[i][j][UZ] = 0. ;
+                        p[i][j][BX] = 0.75 ;
+                        p[i][j][BY] = 1. ;
+                        p[i][j][BZ] = 0. ;
+
+                        p[i][j][RHO] = 1. ;
+                        p[i][j][UU] = (1.)/(gam - 1.) ;
+                }
+                else {
+                        p[i][j][UX] = 0. ;
+                        p[i][j][UY] = 0. ;
+                        p[i][j][UZ] = 0. ;
+                        p[i][j][BX] = 0.75 ;
+                        p[i][j][BY] = -1. ;
+                        p[i][j][BZ] = 0. ;
+
+                        p[i][j][RHO] = 0.125 ;
+                        p[i][j][UU] = (0.1)/(gam - 1.) ;
+                }
+
+	}
+#endif
+#if 0
+	cour = 0.8 ;
+
+	LOOP {
+		X = (i + 0.5)*dx - 0.5*Lx ;
+		Y = (j + 0.5)*dy - 0.5*Ly ;
+
+
+	   	if(X < 0.) {
+                        p[i][j][UX] = 0. ;
+                        p[i][j][UY] = 0. ;
+                        p[i][j][UZ] = 0. ;
+                        p[i][j][BX] = 0.7 ;
+                        p[i][j][BY] = 0. ;
+                        p[i][j][BZ] = 0. ;
+
+                        p[i][j][RHO] = 1. ;
+                        p[i][j][UU] = (1.)/(gam - 1.) ;
+                }
+                else {
+                        p[i][j][UX] = 0. ;
+                        p[i][j][UY] = 0. ;
+                        p[i][j][UZ] = 1. ;
+                        p[i][j][BX] = 0.7 ;
+                        p[i][j][BY] = 1. ;
+                        p[i][j][BZ] = 0. ;
+
+                        p[i][j][RHO] = 0.3 ;
+                        p[i][j][UU] = (0.2)/(gam - 1.) ;
+                }
+
+	}
+#endif
+#if 0
+	/* Relativistic Orszag-Tang vortex */
+	cour = 0.4 ;
+
+	LOOP {
+		X = (i + 0.5)*dx - 0.5*Lx ;
+		Y = (j + 0.5)*dy - 0.5*Ly ;
+
+		p[i][j][UX] = -sin(Y + M_PI) ;
+		p[i][j][UY] = sin(X + M_PI) ;
+		p[i][j][UZ] = 0. ;
+		p[i][j][BX] = -sin(Y + M_PI) ;
+		p[i][j][BY] = sin(2.*(X + M_PI)) ;
+		p[i][j][BZ] = 0. ;
+
+		p[i][j][RHO] = 25./9. ;
+		p[i][j][UU] = (5./3.)/(gam - 1.) ;
+	}
+#endif
+
+#if 0
+	/* Komissarov's explosion problem */
+	tf = 4.0 ;
+	cour = 0.4 ;
+
+	LOOP {
+		X = (i + 0.5)*dx - 0.5*Lx ;
+		Y = (j + 0.5)*dy - 0.5*Ly ;
+		R = sqrt(X*X + Y*Y) ;
+
+		p[i][j][UX] = 0. ;
+		p[i][j][UY] = 0. ;
+		p[i][j][UZ] = 0. ;
+		p[i][j][BX] = 2.0*cos(0.*M_PI/6.) ; 
+		p[i][j][BY] = 2.0*sin(0.*M_PI/6.) ;
+		p[i][j][BZ] = 0. ;
+
+		p[i][j][RHO] = frho(R) ;
+		p[i][j][UU] = fp(R)/(gam - 1.) ;
+	}
+#endif
+
+	/* enforce boundary conditions */
+	bounds() ;
+
+}
+
+double frho(double R)
+{
+	double Rout,Rin,dR,rmax,rmin ;
+
+	/*
+	rmax = 1.e-2 ;
+	rmin = 1.e-4 ;
+	*/
+	rmax = 1.e-2 ;
+	rmin = 1.e-4 ;
+	Rout = 0.8 ;
+	Rin = 0.8 ;
+	dR = (Rout - Rin) ;
+	
+	if(R > Rout) return(rmin) ;
+	if(R < Rin) return(rmax) ;
+	else {
+		return( exp(
+			log(rmax)*(Rout - R)/dR +
+			log(rmin)*(R - Rin)/dR)) ;
+	}
+}
+double fp(double R) 
+{
+	double Rout,Rin,dR,pmin,pmax ;
+
+	/*
+	pmin = 3.e-5 ;
+	pmax = 1. ;
+	*/
+	pmin = 1.e-2 ;
+	pmax = 1. ;
+	Rout = 0.8 ;
+	Rin = 0.8 ;
+	dR = (Rout - Rin) ;
+
+	if(R > Rout) return(pmin) ;
+	else if(R < Rin) return(pmax) ;
+	else {
+		return( exp(
+			log(pmax)*(Rout - R)/dR +
+			log(pmin)*(R - Rin)/dR)) ;
+	}
+
+}

@@ -1,0 +1,15 @@
+
+to run tvdlf
+
+make rtwod
+
+./rtwod
+
+to run zeus
+
+make twod
+
+twod 128
+
+(for 128x128 OTV test)
+
